@@ -6,6 +6,8 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <time.h>
+#include <DFRobot_MLX90614.h>
+
 #include "extern_variable.h"
 
 //接腳與Token定義
@@ -18,12 +20,18 @@ const long  gmtOffset_sec = 28800;
 const int   daylightOffset_sec = 0;
 char timeResult [ 20 ];
 
+//IR Sensor 驅動
+DFRobot_MLX90614_I2C sensor;
+
 //溫度setup
 OneWire oneWire ( tempSensorPin );
 DallasTemperature sensors ( &oneWire );
 
 //LCD Setup
 LiquidCrystal_I2C lcd ( 0x27, 16, 2 );
+
+//公用變數
+float objectTemp;
 
 void setup ()
 {
@@ -37,6 +45,7 @@ void setup ()
   //呼叫設定副程式
   wifiSetup ();
   lineSetup ();
+  irSensorSetup ();
   lcdSetup ();
   timeSetup ();
 }
@@ -62,6 +71,7 @@ void loop ()
     localTime ();
     lcdTimePrint ();
     LINE.notify ( timeResult );
+    delay ( 500 );
   }
   
   else
@@ -110,6 +120,24 @@ void timeSetup ()
   configTime ( gmtOffset_sec, daylightOffset_sec, ntpServer );
 }
 
+//IR Sensor設定
+void irSensorSetup ()
+{
+  while ( NO_ERR != sensor.begin () )
+  {
+    Serial.println ( "Communication with device failed, please check connection" );
+    delay ( 3000 );
+  }
+  
+  Serial.println ( "Begin ok!" );
+
+  sensor.enterSleepMode ();
+  delay ( 50 );
+
+  sensor.enterSleepMode ( false );
+  delay ( 200 );
+}
+
 //LCD 輸出(偵測到物件:是)
 void lcdDetectedPrint ( float temp )
 {
@@ -150,4 +178,16 @@ void lcdTimePrint ()
     
   lcd.print ( timeResult );
   lcd.setCursor ( 0, 1 );
+}
+
+//IR Sensor 輸出
+void irSensorPrint ()
+{
+  objectTemp = sensor.getObjectTempCelsius ();
+
+  Serial.print ( "Object celsius : " );
+  Serial.print ( objectTemp );
+  Serial.println ( " °C" );
+
+  delay(500);
 }
